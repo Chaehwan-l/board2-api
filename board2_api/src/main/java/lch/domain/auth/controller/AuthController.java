@@ -16,7 +16,7 @@ import lch.global.common.ApiResponse;
 import lch.global.security.annotation.LoginUser;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/auth")
 public class AuthController {
 
     private final AuthService authService;

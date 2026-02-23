@@ -14,6 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lch.domain.auth.service.CustomOAuth2User;
+import lch.global.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 
 // Redis 토큰 저장 및 프론트로의 리다이렉트 처리
 
@@ -21,6 +22,7 @@ import lch.domain.auth.service.CustomOAuth2User;
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final StringRedisTemplate redisTemplate;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieRepository;
 
     @Value("${app.oauth2.authorized-redirect-uri}")
     private String redirectUri;
@@ -28,8 +30,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private static final String REDIS_TOKEN_PREFIX = "auth:token:";
     private static final long TOKEN_EXPIRATION_HOURS = 2;
 
-    public OAuth2SuccessHandler(StringRedisTemplate redisTemplate) {
+    public OAuth2SuccessHandler(StringRedisTemplate redisTemplate,
+    							HttpCookieOAuth2AuthorizationRequestRepository cookieRepository) {
         this.redisTemplate = redisTemplate;
+        this.cookieRepository = cookieRepository;
     }
 
     @Override
@@ -49,6 +53,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 String.valueOf(userId),
                 Duration.ofHours(TOKEN_EXPIRATION_HOURS)
         );
+
+        // 프론트엔드로 넘어가기 전, 인증 과정에서 생성했던 임시 쿠키를 메모리에서 깔끔하게 삭제
+        cookieRepository.removeAuthorizationRequestCookies(request, response);
 
         // 프론트엔드 URL로 토큰을 파라미터에 담아 리다이렉트
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
