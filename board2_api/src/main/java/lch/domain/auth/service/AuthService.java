@@ -1,23 +1,35 @@
 package lch.domain.auth.service;
 
+import java.time.Duration;
+import java.util.UUID;
+
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import lch.domain.auth.dto.LoginCommand;
 import lch.domain.auth.dto.RegisterCommand;
 import lch.domain.user.entity.User;
 import lch.domain.user.repository.UserRepository;
 
+
 @Service
 public class AuthService {
 
-    private final UserRepository userRepository;
+	private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StringRedisTemplate redisTemplate; // Redis 연동을 위한 템플릿
 
-    // 생성자 주입
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    // 토큰 만료 시간 (예: 2시간)
+    private static final long TOKEN_EXPIRATION_HOURS = 2;
+    // Redis에 저장될 키의 접두사
+    private static final String REDIS_TOKEN_PREFIX = "auth:token:";
+
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, StringRedisTemplate redisTemplate) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.redisTemplate = redisTemplate;
     }
 
     @Transactional
@@ -47,4 +59,31 @@ public class AuthService {
         userRepository.save(newUser);
         return newUser.getId();
     }
+
+    @Transactional(readOnly = true)
+    public String login(LoginCommand command) {
+        // 1. 유저 조회
+        User user = userRepository.findByUserId(command.userId())
+                .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다."));
+
+        // 2. 비밀번호 검증 (입력된 평문 비밀번호와 DB의 해시된 비밀번호 비교)
+        if (!passwordEncoder.matches(command.password(), user.getPassword())) {
+            throw new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다."); // 보안상 동일한 메시지 반환
+        }
+
+        // 3. 팬텀 토큰 생성 (클라이언트에게 노출될 랜덤 문자열)
+        String phantomToken = UUID.randomUUID().toString();
+
+        // 4. Redis에 토큰 저장 (Key: auth:token:랜덤문자열, Value: 유저 PK ID)
+        // 실무에서는 userId나 role 정보를 JSON 형태로 묶어서 Value로 저장하기도 합니다.
+        String redisKey = REDIS_TOKEN_PREFIX + phantomToken;
+        redisTemplate.opsForValue().set(
+                redisKey,
+                String.valueOf(user.getId()),
+                Duration.ofHours(TOKEN_EXPIRATION_HOURS)
+        );
+
+        return phantomToken; // 컨트롤러로 토큰 반환
+    }
+
 }

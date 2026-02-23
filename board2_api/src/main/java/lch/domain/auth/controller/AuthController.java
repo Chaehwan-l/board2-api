@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import lch.domain.auth.dto.LoginRequest;
 import lch.domain.auth.dto.RegisterRequest;
 import lch.domain.auth.service.AuthService;
 import lch.global.common.ApiResponse;
@@ -32,4 +33,15 @@ public class AuthController {
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("회원가입이 완료되었습니다.", savedId));
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<String>> login(@Valid @RequestBody LoginRequest request) {
+        // 서비스에서 생성된 팬텀 토큰을 받아옵니다.
+        String token = authService.login(request.toCommand());
+
+        return ResponseEntity.ok(
+                ApiResponse.success("로그인 성공", token)
+        );
+    }
+
 }
