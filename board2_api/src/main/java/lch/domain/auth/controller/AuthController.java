@@ -2,6 +2,7 @@ package lch.domain.auth.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,6 +13,7 @@ import lch.domain.auth.dto.LoginRequest;
 import lch.domain.auth.dto.RegisterRequest;
 import lch.domain.auth.service.AuthService;
 import lch.global.common.ApiResponse;
+import lch.global.security.annotation.LoginUser;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -43,5 +45,18 @@ public class AuthController {
                 ApiResponse.success("로그인 성공", token)
         );
     }
+
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<Long>> getMyInfo(@LoginUser Long currentUserId) {
+        // Token을 파싱하거나 SecurityContext를 뒤질 필요 없이,
+        // @LoginUser만 붙이면 currentUserId에 유저의 PK가 주입됨
+
+        // 이 PK를 가지고 UserRepository.findById()를 호출하여 정보를 내려주면 됨
+        return ResponseEntity.ok(
+                ApiResponse.success("내 정보 PK 조회 성공", currentUserId)
+        );
+    }
+
 
 }
