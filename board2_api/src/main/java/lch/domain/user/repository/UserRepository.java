@@ -7,7 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import lch.domain.user.entity.User;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
     Optional<User> findByUserId(String userId);
+    Optional<User> findByEmail(String email);
 
     // 중복 검증용
     boolean existsByUserId(String userId);

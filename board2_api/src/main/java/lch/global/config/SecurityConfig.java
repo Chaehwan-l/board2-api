@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import lch.domain.auth.oauth2.OAuth2SuccessHandler;
+import lch.domain.auth.service.CustomOAuth2UserService;
 import lch.global.security.PhantomTokenFilter;
 
 // REST API이므로 불필요한 Form 로그인이나 CSRF 등은 비활성화하고, 세션 정책을 STATELESS로 설정
@@ -20,10 +22,16 @@ import lch.global.security.PhantomTokenFilter;
 public class SecurityConfig {
 
     private final PhantomTokenFilter phantomTokenFilter;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
-    // 개발자님이 작성하실 커스텀 필터를 주입받습니다.
-    public SecurityConfig(PhantomTokenFilter phantomTokenFilter) {
+    // 커스텀 필터 주입
+    public SecurityConfig(PhantomTokenFilter phantomTokenFilter,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2SuccessHandler oAuth2SuccessHandler) {
         this.phantomTokenFilter = phantomTokenFilter;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2SuccessHandler = oAuth2SuccessHandler;
     }
 
     @Bean
@@ -48,6 +56,15 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll() // 인증 없이 접근 가능
                 .anyRequest().authenticated() // 나머지는 모두 인증 필요
             )
+
+            // OAuth
+            .oauth2Login(oauth2 -> oauth2
+                    .userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService) // 회원정보 저장
+                    )
+                    .successHandler(oAuth2SuccessHandler) // 성공 시 팬텀 토큰 발급 및 리다이렉트
+                )
+
 
             // 기본 인증 필터 앞에 우리가 만든 팬텀 토큰 필터를 삽입
             .addFilterBefore(phantomTokenFilter, UsernamePasswordAuthenticationFilter.class);

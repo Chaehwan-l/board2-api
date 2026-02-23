@@ -55,6 +55,10 @@ public class User {
         return new User(userId, email, encodedPassword, nickname, "LOCAL", null, "ROLE_USER");
     }
 
+    public static User createOAuthUser(String email, String nickname, String provider, String providerId) {
+        return new User(null, email, null, nickname, provider, providerId, "ROLE_USER");
+    }
+
     // Getter 메서드들
     public Long getId() { return id; }
     public String getUserId() { return userId; }
