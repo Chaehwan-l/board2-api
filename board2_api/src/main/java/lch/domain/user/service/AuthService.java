@@ -1,4 +1,4 @@
-package lch.domain.auth.service;
+package lch.domain.user.service;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -9,8 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import lch.domain.auth.dto.LoginCommand;
-import lch.domain.auth.dto.RegisterCommand;
+import lch.domain.user.dto.LoginCommand;
+import lch.domain.user.dto.RegisterCommand;
 import lch.domain.user.entity.User;
 import lch.domain.user.repository.UserRepository;
 import lch.global.error.BusinessException;

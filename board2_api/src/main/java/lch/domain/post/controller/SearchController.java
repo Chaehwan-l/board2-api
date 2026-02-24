@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import lch.domain.post.dto.SearchHistoryResponse;
 import lch.domain.post.service.SearchService;
 import lch.global.common.ApiResponse;
-import lch.global.security.annotation.LoginUser;
+import lch.global.security.LoginUser;
 
 @RestController
 @RequestMapping("/search")

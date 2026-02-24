@@ -1,4 +1,4 @@
-package lch.domain.auth.oauth2;
+package lch.domain.user.oauth2;
 
 // 카카오와 네이버는 유저 정보를 반환하는 JSON 구조가 다름 : 하나의 인터페이스로 묶어 처리
 

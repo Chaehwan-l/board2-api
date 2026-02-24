@@ -12,10 +12,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
-import lch.domain.auth.oauth2.OAuth2SuccessHandler;
-import lch.domain.auth.service.CustomOAuth2UserService;
+import lch.domain.user.oauth2.OAuth2SuccessHandler;
+import lch.domain.user.service.CustomOAuth2UserService;
+import lch.global.security.HttpCookieOAuth2AuthorizationRequestRepository;
 import lch.global.security.PhantomTokenFilter;
-import lch.global.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 
 @Configuration
 @EnableWebSecurity

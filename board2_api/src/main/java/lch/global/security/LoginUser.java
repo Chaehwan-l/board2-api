@@ -1,4 +1,4 @@
-package lch.global.security.annotation;
+package lch.global.security;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

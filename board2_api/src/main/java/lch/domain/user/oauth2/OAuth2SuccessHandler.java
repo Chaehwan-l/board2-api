@@ -1,4 +1,4 @@
-package lch.domain.auth.oauth2;
+package lch.domain.user.oauth2;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -13,9 +13,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lch.domain.auth.service.CustomOAuth2User;
+import lch.domain.user.service.CustomOAuth2User;
+import lch.global.security.HttpCookieOAuth2AuthorizationRequestRepository;
 import lch.global.security.JwtProvider;
-import lch.global.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 
 // Redis 토큰 저장 및 내부 JWT 처리
 

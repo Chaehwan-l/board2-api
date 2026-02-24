@@ -1,4 +1,4 @@
-package lch.global.security.oauth2;
+package lch.global.security;
 
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lch.global.util.CookieUtils;
 
 // Spring Security의 기본 세션 기반 OAuth2 저장소를 대체하는 커스텀 쿠키 저장소
 

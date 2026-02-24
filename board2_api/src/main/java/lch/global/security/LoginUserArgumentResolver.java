@@ -1,4 +1,4 @@
-package lch.global.security.resolver;
+package lch.global.security;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;
@@ -10,7 +10,6 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import lch.global.error.BusinessException;
-import lch.global.security.annotation.LoginUser;
 
 /*
  * Spring Web MVC가 컨트롤러의 파라미터를 바인딩할 때 :

@@ -1,4 +1,4 @@
-package lch.global.util;
+package lch.global.security;
 
 import java.util.Base64;
 import java.util.Optional;
@@ -11,7 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /*
  * API 서버로서의 정체성(STATELESS 세션 정책)을 유지하기 위하여
- * OAuth2 로그인 시 발생하는 상태(State) 검증 데이터를 세션이 아닌 쿠키에 임시 저
+ * OAuth2 로그인 시 발생하는 상태(State) 검증 데이터를 세션이 아닌 쿠키에 임시 저장
  */
 
 // OAuth2 상태 정보를 쿠키에 직렬화/역직렬화하여 저장하기 위한 유틸리티 클래스

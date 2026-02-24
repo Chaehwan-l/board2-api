@@ -1,4 +1,4 @@
-package lch.domain.auth.dto;
+package lch.domain.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
 

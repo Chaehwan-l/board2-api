@@ -1,4 +1,4 @@
-package lch.domain.auth.dto;
+package lch.domain.user.dto;
 
 // 비지니스 서비스용 DTO
 

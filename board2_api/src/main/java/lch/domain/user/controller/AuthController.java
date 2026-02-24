@@ -1,4 +1,4 @@
-package lch.domain.auth.controller;
+package lch.domain.user.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,11 +11,11 @@ import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lch.domain.auth.dto.LoginRequest;
-import lch.domain.auth.dto.RegisterRequest;
-import lch.domain.auth.service.AuthService;
+import lch.domain.user.dto.LoginRequest;
+import lch.domain.user.dto.RegisterRequest;
+import lch.domain.user.service.AuthService;
 import lch.global.common.ApiResponse;
-import lch.global.security.annotation.LoginUser;
+import lch.global.security.LoginUser;
 
 @RestController
 @RequestMapping("/auth")

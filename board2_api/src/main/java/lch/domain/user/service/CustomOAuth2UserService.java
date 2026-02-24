@@ -1,4 +1,4 @@
-package lch.domain.auth.service;
+package lch.domain.user.service;
 
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -7,10 +7,10 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import lch.domain.auth.oauth2.KakaoOAuth2UserInfo;
-import lch.domain.auth.oauth2.NaverOAuth2UserInfo;
-import lch.domain.auth.oauth2.OAuth2UserInfo;
 import lch.domain.user.entity.User;
+import lch.domain.user.oauth2.KakaoOAuth2UserInfo;
+import lch.domain.user.oauth2.NaverOAuth2UserInfo;
+import lch.domain.user.oauth2.OAuth2UserInfo;
 import lch.domain.user.repository.UserRepository;
 
 /*

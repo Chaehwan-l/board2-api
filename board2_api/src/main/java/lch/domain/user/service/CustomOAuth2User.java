@@ -1,4 +1,4 @@
-package lch.domain.auth.service;
+package lch.domain.user.service;
 
 import java.util.Collection;
 import java.util.Collections;

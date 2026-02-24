@@ -1,4 +1,4 @@
-package lch.domain.auth.oauth2;
+package lch.domain.user.oauth2;
 
 import java.util.Map;
 

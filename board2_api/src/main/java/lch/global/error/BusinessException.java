@@ -22,4 +22,14 @@ public class BusinessException extends RuntimeException {
             super(message);
         }
     }
+
+    // 권한 없음 시 발생하는 예외 (403 매핑용)
+    public static class AccessDeniedException extends BusinessException {
+        public AccessDeniedException(String message) {
+            super(message);
+        }
+    }
+
+
+
 }
