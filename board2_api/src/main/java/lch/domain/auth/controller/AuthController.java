@@ -49,18 +49,17 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
-        // 1. 헤더에서 Bearer 토큰 추출
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @Parameter(hidden = true) @LoginUser Long userId, HttpServletRequest request) {
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            // 2. Redis에서 토큰 삭제
-            authService.logout(token);
+            // 서비스의 변경된 파라미터에 맞춰 userId 전달
+            authService.logout(token, userId);
         }
 
-        return ResponseEntity.ok(
-                ApiResponse.success("로그아웃 되었습니다.", null)
-        );
+        return ResponseEntity.ok(ApiResponse.success("로그아웃 되었습니다.", null));
     }
 
     @GetMapping("/me")

@@ -97,10 +97,13 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String token) {
+    public void logout(String token, Long userId) {
         // Redis에 저장된 "auth:token:UUID" 키를 삭제하여 세션 무효화
         String redisKey = redisTokenPrefix + token;
         redisTemplate.delete(redisKey);
+
+        // 검색 기록 삭제
+        redisTemplate.delete("search:history:" + userId);
     }
 
 }
