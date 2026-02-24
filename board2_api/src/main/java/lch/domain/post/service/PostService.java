@@ -9,13 +9,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import lch.domain.post.dto.AttachmentResponse;
+import lch.domain.post.dto.CommentResponse;
 import lch.domain.post.dto.PostCreateCommand;
 import lch.domain.post.dto.PostListResponse;
 import lch.domain.post.dto.PostResponse;
 import lch.domain.post.dto.PostUpdateCommand;
 import lch.domain.post.entity.Attachment;
+import lch.domain.post.entity.Comment;
 import lch.domain.post.entity.Post;
 import lch.domain.post.repository.AttachmentRepository;
+import lch.domain.post.repository.CommentRepository;
 import lch.domain.post.repository.PostRepository;
 import lch.domain.user.entity.User;
 import lch.domain.user.repository.UserRepository;
@@ -29,23 +32,25 @@ public class PostService {
     private final PostRepository postRepository;
     private final AttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
+
     private final RedisViewCountService viewCountService;
     private final UserCacheService userCacheService;
     private final S3StorageService s3StorageService;
+    private final SearchService searchService;
 
-    public PostService(PostRepository postRepository,
-                       AttachmentRepository attachmentRepository,
-                       UserRepository userRepository,
-                       RedisViewCountService viewCountService,
-                       SearchService searchService,
-                       UserCacheService userCacheService,
-                       S3StorageService s3StorageService) {
+    public PostService(PostRepository postRepository, AttachmentRepository attachmentRepository,
+                       UserRepository userRepository, RedisViewCountService viewCountService,
+                       SearchService searchService, UserCacheService userCacheService,
+                       S3StorageService s3StorageService, CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.attachmentRepository = attachmentRepository;
         this.userRepository = userRepository;
         this.viewCountService = viewCountService;
         this.userCacheService = userCacheService;
         this.s3StorageService = s3StorageService;
+        this.commentRepository = commentRepository;
+        this.searchService = searchService;
     }
 
     @Transactional
@@ -72,6 +77,7 @@ public class PostService {
         return post.getId();
     }
 
+    // 상세 조회
     @Transactional(readOnly = true)
     public PostResponse getPost(Long postId, Long currentUserId) {
         Post post = postRepository.findById(postId)
@@ -80,19 +86,17 @@ public class PostService {
         viewCountService.increment(postId);
         String authorNickname = userCacheService.getUserNickname(post.getAuthor().getId());
 
-        // 해당 게시글의 첨부파일 목록 조회
         List<AttachmentResponse> attachmentResponses = attachmentRepository.findByPostId(postId).stream()
-                .map(a -> new AttachmentResponse(a.getId(), a.getFileName(), a.getS3Key()))
+                .map(a -> new AttachmentResponse(a.getId(), a.getFileName(), a.getS3Key())).toList();
+
+        // 댓글 목록 조회 및 변환
+        List<CommentResponse> commentResponses = commentRepository.findByPostId(postId).stream()
+                .map(c -> new CommentResponse(c.getId(), c.getAuthor().getNickname(), c.getContent(), c.getCreatedAt()))
                 .toList();
 
         return new PostResponse(
-            post.getId(),
-            post.getTitle(),
-            post.getContent(),
-            post.getViewCount(),
-            authorNickname,
-            post.getCreatedAt(),
-            attachmentResponses
+            post.getId(), post.getTitle(), post.getContent(), post.getViewCount(),
+            authorNickname, post.getCreatedAt(), attachmentResponses, commentResponses
         );
     }
 
@@ -143,6 +147,51 @@ public class PostService {
                     nickname,
                     totalViewCount,
                     post.getCreatedAt()
+            );
+        });
+    }
+
+    // 댓글 작성
+    @Transactional
+    public Long createComment(Long postId, Long userId, String content) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new BusinessException("게시글을 찾을 수 없습니다."));
+        User author = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("사용자를 찾을 수 없습니다."));
+
+        Comment comment = new Comment(post, author, content);
+        return commentRepository.save(comment).getId();
+    }
+
+    // 댓글 삭제
+    @Transactional
+    public void deleteComment(Long commentId, Long userId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new BusinessException("댓글을 찾을 수 없습니다."));
+
+        if (!comment.getAuthor().getId().equals(userId)) {
+            throw new BusinessException.AccessDeniedException("댓글 삭제 권한이 없습니다.");
+        }
+        commentRepository.delete(comment);
+    }
+
+    // 게시글 검색 및 검색어 저장
+    @Transactional(readOnly = true)
+    public Page<PostListResponse> searchPosts(String keyword, Long userId, Pageable pageable) {
+        // 검색어가 2자 이상일 때만 Redis에 저장 (무의미한 1글자 검색 방지)
+        if (keyword != null && keyword.trim().length() >= 2) {
+            searchService.saveKeyword(userId, keyword.trim());
+        }
+
+        Page<Post> posts = postRepository.findByTitleContainingOrContentContaining(keyword, keyword, pageable);
+
+        return posts.map(post -> {
+            Long redisCount = viewCountService.getCount("post:view:count:" + post.getId());
+            Long totalViewCount = post.getViewCount() + redisCount;
+            String nickname = userCacheService.getUserNickname(post.getAuthor().getId());
+
+            return new PostListResponse(
+                    post.getId(), post.getTitle(), nickname, totalViewCount, post.getCreatedAt()
             );
         });
     }

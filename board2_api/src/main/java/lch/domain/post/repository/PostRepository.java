@@ -13,4 +13,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 	@Override
 	@EntityGraph(attributePaths = {"author"})
     Page<Post> findAll(Pageable pageable);
+
+	// 제목 또는 내용으로 검색 (N+1 방지)
+    @EntityGraph(attributePaths = {"author"})
+    Page<Post> findByTitleContainingOrContentContaining(String title, String content, Pageable pageable);
+
 }

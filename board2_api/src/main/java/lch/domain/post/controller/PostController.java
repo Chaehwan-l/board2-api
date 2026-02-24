@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lch.domain.post.dto.CommentRequest;
 import lch.domain.post.dto.PostCreateRequest;
 import lch.domain.post.dto.PostListResponse;
 import lch.domain.post.dto.PostResponse;
@@ -117,6 +118,42 @@ public class PostController {
 
         SearchHistoryResponse response = new SearchHistoryResponse(searchService.getHistory(userId));
         return ResponseEntity.ok(ApiResponse.success("검색 기록 조회 성공", response));
+    }
+
+    @Operation(summary = "댓글 작성", description = "특정 게시글에 댓글을 작성합니다.")
+    @PostMapping("/{postId}/comments")
+    public ResponseEntity<ApiResponse<Long>> createComment(
+            @Parameter(hidden = true) @LoginUser Long userId,
+            @PathVariable Long postId,
+            @Valid @RequestBody CommentRequest request) {
+
+        Long commentId = postService.createComment(postId, userId, request.content());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("댓글이 작성되었습니다.", commentId));
+    }
+
+    @Operation(summary = "댓글 삭제", description = "작성자 본인만 댓글을 삭제할 수 있습니다.")
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @Parameter(hidden = true) @LoginUser Long userId,
+            @PathVariable Long commentId) {
+
+        postService.deleteComment(commentId, userId);
+        return ResponseEntity.ok(ApiResponse.success("댓글이 삭제되었습니다.", null));
+    }
+
+    @Operation(summary = "게시글 키워드 검색", description = "제목이나 내용에 키워드가 포함된 게시글을 검색하고, 최근 검색어에 추가합니다.")
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<PostListResponse>>> searchPosts(
+            @Parameter(hidden = true) @LoginUser Long userId,
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<PostListResponse> response = postService.searchPosts(keyword, userId, pageRequest);
+
+        return ResponseEntity.ok(ApiResponse.success("검색 성공", response));
     }
 
 }

@@ -15,5 +15,6 @@ public record PostResponse(
 	    Long viewCount,
 	    String authorNickname,  // 캐시에서 가져올 닉네임
 	    LocalDateTime createdAt,
-	    List<AttachmentResponse> attachments // 첨부파일 리스트
+	    List<AttachmentResponse> attachments, // 첨부파일 리스트
+	    List<CommentResponse> comments // 댓글 리스트
 	) {}
