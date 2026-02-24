@@ -50,7 +50,7 @@ public class PostController {
     }
 
     @Operation(summary = "게시글 작성 (파일 첨부 포함)", description = "multipart/form-data 형식으로 JSON(request)과 파일 리스트(files)를 받습니다.")
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE) // 추가
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Long>> create(
             @Parameter(hidden = true) @LoginUser Long userId,
 
@@ -100,14 +100,19 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success("목록 조회 성공", response));
     }
 
-    @Operation(summary = "게시글 수정", description = "작성자 본인만 게시글의 제목과 내용을 수정할 수 있습니다.")
-    @PutMapping("/{postId}")
+    @Operation(summary = "게시글 수정", description = "작성자 본인만 게시글의 제목, 내용 및 첨부파일을 수정할 수 있습니다.")
+    @PutMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Long>> update(
             @Parameter(hidden = true) @LoginUser Long userId,
             @PathVariable Long postId,
-            @Valid @RequestBody PostUpdateRequest request) {
 
-        Long updatedId = postService.updatePost(postId, userId, request.toCommand());
+            // JSON 데이터를 받기 위해 @RequestBody 대신 @RequestPart 사용
+            @Valid @RequestPart("request") PostUpdateRequest request,
+
+            // 새로 추가할 파일들을 받는 파트 (없을 수도 있으므로 required = false)
+            @RequestPart(value = "newFiles", required = false) List<MultipartFile> newFiles) {
+
+        Long updatedId = postService.updatePost(postId, userId, request.toCommand(newFiles));
         return ResponseEntity.ok(ApiResponse.success("게시글이 수정되었습니다.", updatedId));
     }
 

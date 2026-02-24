@@ -119,6 +119,7 @@ public class PostService {
         postRepository.delete(post);
     }
 
+    // 게시글 수정
     @Transactional
     public Long updatePost(Long postId, Long currentUserId, PostUpdateCommand command) {
         Post post = postRepository.findById(postId)
@@ -128,7 +129,29 @@ public class PostService {
             throw new BusinessException.AccessDeniedException("게시글 수정 권한이 없습니다.");
         }
 
+        // 1. 텍스트 정보 업데이트
         post.update(command.title(), command.content());
+
+        // 2. 기존 첨부파일 삭제 처리 (S3 완전 삭제 + DB 레코드 삭제)
+        if (command.deletedAttachmentIds() != null && !command.deletedAttachmentIds().isEmpty()) {
+            List<Attachment> targetAttachments = attachmentRepository.findAllById(command.deletedAttachmentIds());
+            for (Attachment attachment : targetAttachments) {
+                // 보안 검증: 삭제하려는 파일이 현재 수정 중인 게시글에 속한 파일이 맞는지 확인
+                if (attachment.getPost().getId().equals(postId)) {
+                    s3StorageService.deleteFile(attachment.getS3Key());
+                    attachmentRepository.delete(attachment);
+                }
+            }
+        }
+
+        // 3. 새로운 파일 S3 업로드 및 DB 저장
+        if (command.newFiles() != null && !command.newFiles().isEmpty()) {
+            for (MultipartFile file : command.newFiles()) {
+                String s3Key = s3StorageService.uploadFile(file);
+                attachmentRepository.save(new Attachment(post, s3Key, file.getOriginalFilename(), file.getSize()));
+            }
+        }
+
         return post.getId();
     }
 

@@ -50,4 +50,5 @@ public class Attachment {
     public String getS3Key() { return s3Key; }
     public String getFileName() { return fileName; }
     public Long getFileSize() { return fileSize; }
+    public Post getPost() { return post; }
 }
