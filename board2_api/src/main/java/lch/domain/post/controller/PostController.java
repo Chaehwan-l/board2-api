@@ -1,4 +1,3 @@
-// lch/domain/post/controller/PostController.java
 package lch.domain.post.controller;
 
 import org.springframework.data.domain.Page;
@@ -16,26 +15,35 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lch.domain.post.dto.PostCreateRequest;
 import lch.domain.post.dto.PostListResponse;
 import lch.domain.post.dto.PostResponse;
 import lch.domain.post.dto.PostUpdateRequest;
+import lch.domain.post.dto.SearchHistoryResponse;
 import lch.domain.post.service.PostService;
+import lch.domain.post.service.SearchService;
 import lch.global.common.ApiResponse;
 import lch.global.security.LoginUser;
 
+@Tag(name = "게시판 API", description = "게시글 CRUD, 목록 조회 및 검색 API")
 @RestController
-@RequestMapping("/api/posts")
+@RequestMapping("/posts")
 public class PostController {
 
     private final PostService postService;
+    private final SearchService searchService;
 
-    public PostController(PostService postService) {
+    // 생성자 주입
+    public PostController(PostService postService, SearchService searchService) {
         this.postService = postService;
+        this.searchService = searchService;
     }
 
+    @Operation(summary = "게시글 작성", description = "제목과 내용을 입력하여 새로운 게시글을 작성합니다.")
     @PostMapping
     public ResponseEntity<ApiResponse<Long>> create(
             @Parameter(hidden = true) @LoginUser Long userId,
@@ -46,6 +54,7 @@ public class PostController {
                 .body(ApiResponse.success("게시글이 작성되었습니다.", postId));
     }
 
+    @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 내용을 조회하며, 조회수가 1 증가합니다. (Write-back)")
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostResponse>> getDetail(
             @Parameter(hidden = true) @LoginUser Long userId,
@@ -55,7 +64,7 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success("조회 성공", response));
     }
 
-    // 삭제
+    @Operation(summary = "게시글 삭제", description = "작성자 본인만 게시글을 삭제할 수 있습니다.")
     @DeleteMapping("/{postId}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @Parameter(hidden = true) @LoginUser Long userId,
@@ -65,7 +74,7 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success("삭제 성공", null));
     }
 
-    // 게시글 목록 페이징 조회 (최신순 정렬 기본값)
+    @Operation(summary = "게시글 목록 페이징 조회", description = "page(0부터 시작)와 size를 입력받아 최신순으로 게시글 목록을 반환합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostListResponse>>> getList(
             @RequestParam(defaultValue = "0") int page,
@@ -78,7 +87,7 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success("목록 조회 성공", response));
     }
 
-    // 게시글 수정
+    @Operation(summary = "게시글 수정", description = "작성자 본인만 게시글의 제목과 내용을 수정할 수 있습니다.")
     @PutMapping("/{postId}")
     public ResponseEntity<ApiResponse<Long>> update(
             @Parameter(hidden = true) @LoginUser Long userId,
@@ -89,7 +98,13 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success("게시글이 수정되었습니다.", updatedId));
     }
 
+    @Operation(summary = "최근 검색어 조회", description = "현재 로그인한 유저의 최근 검색어 목록(최대 10개)을 최신순으로 반환합니다.")
+    @GetMapping("/search/history")
+    public ResponseEntity<ApiResponse<SearchHistoryResponse>> getHistory(
+            @Parameter(hidden = true) @LoginUser Long userId) {
 
-
+        SearchHistoryResponse response = new SearchHistoryResponse(searchService.getHistory(userId));
+        return ResponseEntity.ok(ApiResponse.success("검색 기록 조회 성공", response));
+    }
 
 }
