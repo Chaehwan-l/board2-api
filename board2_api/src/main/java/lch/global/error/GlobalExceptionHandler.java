@@ -12,21 +12,28 @@ import lch.global.common.ApiResponse;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1. 비즈니스 로직에서 던진 IllegalArgumentException 처리 (예: 중복 아이디)
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT) // 409 상태 코드
-                .body(ApiResponse.error(e.getMessage()));
-    }
-
-    // 2. DTO의 @Valid 검증 실패 시 발생하는 예외 처리
+	// 1. 유효성 검증 실패 (유지: @Valid 처리용)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
-        // 첫 번째 검증 에러 메시지만 추출하여 반환
         String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST) // 400 상태 코드
-                .body(ApiResponse.error(errorMessage));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(errorMessage));
+    }
+
+    // 2. 인증 실패 (신규: 401)
+    @ExceptionHandler(BusinessException.AuthenticationFailedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthFailed(BusinessException.AuthenticationFailedException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(e.getMessage()));
+    }
+
+    // 3. 중복 리소스 (신규: 409, 기존 handleIllegalArgumentException의 역할을 계승)
+    @ExceptionHandler(BusinessException.DuplicateResourceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuplicate(BusinessException.DuplicateResourceException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(e.getMessage()));
+    }
+
+    // 4. 기타 비즈니스 예외 (신규: 최상위 비즈니스 예외 처리)
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(e.getMessage()));
     }
 }

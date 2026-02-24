@@ -13,6 +13,7 @@ import lch.domain.auth.dto.LoginCommand;
 import lch.domain.auth.dto.RegisterCommand;
 import lch.domain.user.entity.User;
 import lch.domain.user.repository.UserRepository;
+import lch.global.error.BusinessException;
 import lch.global.security.JwtProvider;
 
 
@@ -41,15 +42,15 @@ public class AuthService {
     @Transactional
     public Long registerLocalUser(RegisterCommand command) {
 
-        // 1. 중복 검증 (예외가 발생하면 GlobalExceptionHandler가 낚아채서 409 응답을 만듦)
-        if (userRepository.existsByUserId(command.userId())) {
-            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+    	// 중복 검증 시 DuplicateResourceException 사용
+    	if (userRepository.existsByUserId(command.userId())) {
+            throw new BusinessException.DuplicateResourceException("이미 사용 중인 아이디입니다.");
         }
         if (userRepository.existsByEmail(command.email())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            throw new BusinessException.DuplicateResourceException("이미 사용 중인 이메일입니다.");
         }
         if (userRepository.existsByNickname(command.nickname())) {
-            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+            throw new BusinessException.DuplicateResourceException("이미 사용 중인 닉네임입니다.");
         }
 
         // 2. 패스워드 암호화
@@ -64,16 +65,19 @@ public class AuthService {
         );
 
         userRepository.save(newUser);
+
         return newUser.getId();
     }
 
     @Transactional(readOnly = true)
     public String login(LoginCommand command) {
-        User user = userRepository.findByUserId(command.userId())
-                .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다."));
+
+    	// 로그인 실패 시 AuthenticationFailedException 사용
+    	User user = userRepository.findByUserId(command.userId())
+                .orElseThrow(() -> new BusinessException.AuthenticationFailedException("아이디 또는 비밀번호가 일치하지 않습니다."));
 
         if (!passwordEncoder.matches(command.password(), user.getPassword())) {
-            throw new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다.");
+            throw new BusinessException.AuthenticationFailedException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
 
         // 1. 내부용 JWT 발급
