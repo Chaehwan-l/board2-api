@@ -108,23 +108,27 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new BusinessException("게시글을 찾을 수 없습니다."));
 
+        // 조회수 증가 후, DB 값과 Redis에만 있는 미동기화 값을 합산하여 응답 (논리 오류 1-1 해결)
         viewCountService.increment(postId);
+        Long redisCount = viewCountService.getCount("post:view:count:" + postId);
+        Long totalViewCount = post.getViewCount() + redisCount;
+
         String authorNickname = userCacheService.getUserNickname(post.getAuthor().getId());
 
         List<AttachmentResponse> attachmentResponses = attachmentRepository.findByPostId(postId).stream()
                 .map(a -> new AttachmentResponse(a.getId(), a.getFileName(), a.getS3Key())).toList();
 
-        // 댓글 목록 조회 및 변환
         List<CommentResponse> commentResponses = commentRepository.findByPostId(postId).stream()
                 .map(c -> new CommentResponse(c.getId(), c.getAuthor().getNickname(), c.getContent(), c.getCreatedAt()))
                 .toList();
 
         return new PostResponse(
-            post.getId(), post.getTitle(), post.getContent(), post.getViewCount(),
+            post.getId(), post.getTitle(), post.getContent(), totalViewCount, // 합산값 전달
             authorNickname, post.getCreatedAt(), attachmentResponses, commentResponses
         );
     }
 
+    // 삭제
     @Transactional
     public void deletePost(Long postId, Long currentUserId) {
         Post post = postRepository.findById(postId)
@@ -134,14 +138,30 @@ public class PostService {
             throw new BusinessException.AccessDeniedException("게시글 삭제 권한이 없습니다.");
         }
 
-        // 1. 연관된 첨부파일들을 찾아서 S3에서 실물 삭제
+        // 1. Redis 조회수 키 즉시 삭제 (메모리 누수 방지 - 논리 오류 1-3 해결)
+        viewCountService.delete("post:view:count:" + postId);
+
+        // 2. 연관된 첨부파일들을 찾아서 DB 커밋 성공 후에만 S3에서 실물 삭제 (정합성 보장 - 논리 오류 2-2 해결)
         List<Attachment> attachments = attachmentRepository.findByPostId(postId);
         for (Attachment attachment : attachments) {
-            s3StorageService.deleteFile(attachment.getS3Key());
+            registerS3DeleteAfterCommit(attachment.getS3Key());
         }
 
-        // 2. 게시글 삭제 (DB에서는 ON DELETE CASCADE에 의해 comments, attachments 행이 자동 삭제됨)
+        // 3. 게시글 삭제 (DB에서는 ON DELETE CASCADE에 의해 comments, attachments 행이 자동 삭제됨)
         postRepository.delete(post);
+    }
+
+    // DB 커밋 완료 후에만 S3 파일을 삭제하는 헬퍼 메서드
+    private void registerS3DeleteAfterCommit(String s3Key) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    log.info("DB 삭제 완료. S3 파일을 실물 삭제합니다: {}", s3Key);
+                    s3StorageService.deleteFile(s3Key);
+                }
+            });
+        }
     }
 
     // 게시글 수정

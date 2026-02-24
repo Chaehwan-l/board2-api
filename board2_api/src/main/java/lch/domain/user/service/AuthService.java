@@ -76,6 +76,11 @@ public class AuthService {
     	User user = userRepository.findByUserId(command.userId())
                 .orElseThrow(() -> new BusinessException.AuthenticationFailedException("아이디 또는 비밀번호가 일치하지 않습니다."));
 
+    	// OAuth 계정(비밀번호 없음)으로 로컬 로그인 시도 시 예외 처리
+    	if (user.getPassword() == null || !"LOCAL".equals(user.getProvider())) {
+            throw new BusinessException.AuthenticationFailedException("소셜 로그인 계정입니다. 해당 소셜로 로그인해주세요.");
+        }
+
         if (!passwordEncoder.matches(command.password(), user.getPassword())) {
             throw new BusinessException.AuthenticationFailedException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }

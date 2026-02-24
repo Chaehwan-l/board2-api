@@ -14,6 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lch.domain.user.service.CustomOAuth2User;
+import lch.global.security.CookieUtils;
 import lch.global.security.HttpCookieOAuth2AuthorizationRequestRepository;
 import lch.global.security.JwtProvider;
 
@@ -60,15 +61,15 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 Duration.ofHours(tokenExpirationHours)
         );
 
+        // 보안 강화: URL 파라미터 대신 쿠키로만 토큰 전달
+        CookieUtils.addCookie(response, "access_token", phantomToken, (int) Duration.ofHours(tokenExpirationHours).toSeconds());
+
         // 프론트엔드로 넘어가기 전, 인증 과정에서 생성했던 임시 쿠키를 메모리에서 깔끔하게 삭제
         cookieRepository.removeAuthorizationRequestCookies(request, response);
 
-        // 프론트엔드 URL로 토큰을 파라미터에 담아 리다이렉트
-        String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
-                .queryParam("token", phantomToken)
-                .build().toUriString();
+        // URL에서 token 파라미터 제거 (브라우저 히스토리 노출 방지)
+        String targetUrl = UriComponentsBuilder.fromUriString(redirectUri).build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
-
     }
 }
