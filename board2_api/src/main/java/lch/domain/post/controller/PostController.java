@@ -32,7 +32,7 @@ import lch.domain.post.dto.PostUpdateRequest;
 import lch.domain.post.dto.SearchHistoryResponse;
 import lch.domain.post.service.PostService;
 import lch.domain.post.service.SearchService;
-import lch.global.common.ApiResponse;
+import lch.global.error.ApiResponse;
 import lch.global.security.LoginUser;
 
 @Tag(name = "게시판 API", description = "게시글 CRUD, 목록 조회 및 검색 API")

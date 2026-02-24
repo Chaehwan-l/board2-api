@@ -16,7 +16,7 @@ import jakarta.validation.Valid;
 import lch.domain.user.dto.LoginRequest;
 import lch.domain.user.dto.RegisterRequest;
 import lch.domain.user.service.AuthService;
-import lch.global.common.ApiResponse;
+import lch.global.error.ApiResponse;
 import lch.global.security.LoginUser;
 
 @Tag(name = "인증/회원 API", description = "회원가입, 로그인 및 유저 정보 관련 API")

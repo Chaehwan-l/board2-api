@@ -1,11 +1,16 @@
 package lch.domain.post.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import lch.domain.post.dto.AttachmentResponse;
@@ -28,6 +33,8 @@ import lch.global.infra.S3StorageService;
 
 @Service
 public class PostService {
+
+	private static final Logger log = LoggerFactory.getLogger(PostService.class);
 
     private final PostRepository postRepository;
     private final AttachmentRepository attachmentRepository;
@@ -58,23 +65,41 @@ public class PostService {
         User author = userRepository.findById(command.authorId())
                 .orElseThrow(() -> new BusinessException("사용자를 찾을 수 없습니다."));
 
-        // 1. 게시글 저장
         Post post = new Post(author, command.title(), command.content());
         postRepository.save(post);
 
-        // 2. 첨부파일이 존재할 경우 S3 업로드 및 DB 저장
         List<MultipartFile> files = command.files();
         if (files != null && !files.isEmpty()) {
-            for (MultipartFile file : files) {
-                // S3에 파일 업로드 후 경로(Key) 반환
-                String s3Key = s3StorageService.uploadFile(file);
+            List<String> uploadedKeys = new ArrayList<>();
 
-                // DB에 메타데이터 저장
+            for (MultipartFile file : files) {
+                // S3 업로드
+                String s3Key = s3StorageService.uploadFile(file);
+                uploadedKeys.add(s3Key);
+
+                // 트랜잭션 롤백 시 S3 파일 삭제를 위한 동기화 작업 등록
+                registerS3Rollback(s3Key);
+
                 Attachment attachment = new Attachment(post, s3Key, file.getOriginalFilename(), file.getSize());
                 attachmentRepository.save(attachment);
             }
         }
         return post.getId();
+    }
+
+    // DB 트랜잭션 롤백 시 S3 파일을 삭제하는 동기화 로직
+    private void registerS3Rollback(String s3Key) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == STATUS_ROLLED_BACK) {
+                        log.warn("DB 트랜잭션 롤백으로 인해 업로드된 S3 파일을 삭제합니다. key: {}", s3Key);
+                        s3StorageService.deleteFile(s3Key);
+                    }
+                }
+            });
+        }
     }
 
     // 상세 조회
@@ -120,6 +145,7 @@ public class PostService {
     }
 
     // 게시글 수정
+    // updatePost 메서드 등 다른 로직에서도 동일하게 registerS3Rollback을 호출하여 안전하게 관리 가능합니다.
     @Transactional
     public Long updatePost(Long postId, Long currentUserId, PostUpdateCommand command) {
         Post post = postRepository.findById(postId)
@@ -129,14 +155,12 @@ public class PostService {
             throw new BusinessException.AccessDeniedException("게시글 수정 권한이 없습니다.");
         }
 
-        // 1. 텍스트 정보 업데이트
         post.update(command.title(), command.content());
 
-        // 2. 기존 첨부파일 삭제 처리 (S3 완전 삭제 + DB 레코드 삭제)
+        // 기존 파일 삭제
         if (command.deletedAttachmentIds() != null && !command.deletedAttachmentIds().isEmpty()) {
             List<Attachment> targetAttachments = attachmentRepository.findAllById(command.deletedAttachmentIds());
             for (Attachment attachment : targetAttachments) {
-                // 보안 검증: 삭제하려는 파일이 현재 수정 중인 게시글에 속한 파일이 맞는지 확인
                 if (attachment.getPost().getId().equals(postId)) {
                     s3StorageService.deleteFile(attachment.getS3Key());
                     attachmentRepository.delete(attachment);
@@ -144,10 +168,11 @@ public class PostService {
             }
         }
 
-        // 3. 새로운 파일 S3 업로드 및 DB 저장
+        // 새 파일 추가 시에도 롤백 로직 적용
         if (command.newFiles() != null && !command.newFiles().isEmpty()) {
             for (MultipartFile file : command.newFiles()) {
                 String s3Key = s3StorageService.uploadFile(file);
+                registerS3Rollback(s3Key); // 롤백 대비
                 attachmentRepository.save(new Attachment(post, s3Key, file.getOriginalFilename(), file.getSize()));
             }
         }

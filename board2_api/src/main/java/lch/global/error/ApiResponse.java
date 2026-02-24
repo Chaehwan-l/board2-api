@@ -1,8 +1,9 @@
-package lch.global.common;
+package lch.global.error;
 
 // try-catch로 코드가 지저분해지는 것을 막고, 프론트와 통신할 때 항상 일정한 JSON 규격을 내려주기 위한 세팅
 // Record를 사용하여 불변 DTO를 매우 간결하게 생성
 // 프론트엔드(Vercel)와 통신할 때 항상 이 포맷으로 JSON이 직렬화됨
+
 public record ApiResponse<T>(
     boolean success,
     String message,
