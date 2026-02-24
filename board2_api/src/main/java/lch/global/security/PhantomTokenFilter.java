@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.fasterxml.jackson.databind.ObjectMapper; // JSON 변환을 위해 추가
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,9 +29,11 @@ public class PhantomTokenFilter extends OncePerRequestFilter {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper(); // JSON 처리를 위한 객체
+    private final JwtProvider jwtProvider;
 
-    public PhantomTokenFilter(StringRedisTemplate redisTemplate) {
+    public PhantomTokenFilter(StringRedisTemplate redisTemplate, JwtProvider jwtProvider) {
         this.redisTemplate = redisTemplate;
+        this.jwtProvider = jwtProvider;
     }
 
     @Override
@@ -40,19 +43,29 @@ public class PhantomTokenFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (StringUtils.hasText(token)) {
-            String redisKey = redisTokenPrefix + token;
-            String userIdString = redisTemplate.opsForValue().get(redisKey);
+            String jwt = redisTemplate.opsForValue().get(redisTokenPrefix + token);
 
-            if (StringUtils.hasText(userIdString)) {
-                // 성공: 인증 정보 설정
-                Long userId = Long.valueOf(userIdString);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userId, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (StringUtils.hasText(jwt)) {
+                try {
+                    // 1. Redis에서 꺼낸 JWT 파싱
+                    Claims claims = jwtProvider.getClaims(jwt);
+                    Long userId = Long.valueOf(claims.getSubject());
+                    String role = claims.get("role", String.class);
+
+                    // 2. SecurityContext에 인증 정보 주입
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userId, null,
+                                    Collections.singletonList(new SimpleGrantedAuthority(role)));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                } catch (Exception e) {
+                    // JWT가 변조되었거나 만료된 경우
+                    sendErrorResponse(response, "인증 정보가 유효하지 않습니다.");
+                    return;
+                }
             } else {
-                // 실패: 토큰은 보냈지만 Redis에 없음 (만료 등)
-                // 여기서 즉시 응답을 보내고 return 하여 filterChain 진행을 막습니다.
-                sendErrorResponse(response, "유효하지 않거나 만료된 인증 토큰입니다.");
+                // UUID 자체가 Redis에 없는 경우
+                sendErrorResponse(response, "로그인 세션이 만료되었습니다.");
                 return;
             }
         }

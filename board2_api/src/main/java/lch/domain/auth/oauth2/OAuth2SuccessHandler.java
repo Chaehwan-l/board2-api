@@ -14,26 +14,33 @@ import org.springframework.web.util.UriComponentsBuilder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lch.domain.auth.service.CustomOAuth2User;
+import lch.global.security.JwtProvider;
 import lch.global.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 
-// Redis 토큰 저장 및 프론트로의 리다이렉트 처리
+// Redis 토큰 저장 및 내부 JWT 처리
 
 @Component
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final StringRedisTemplate redisTemplate;
     private final HttpCookieOAuth2AuthorizationRequestRepository cookieRepository;
+    private final JwtProvider jwtProvider;
 
     @Value("${app.oauth2.authorized-redirect-uri}")
     private String redirectUri;
 
-    private static final String REDIS_TOKEN_PREFIX = "auth:token:";
-    private static final long TOKEN_EXPIRATION_HOURS = 2;
+    @Value("${app.token.expiration-hours}")
+    private long tokenExpirationHours;
+
+    @Value("${app.token.redis-prefix}")
+    private String redisTokenPrefix;
 
     public OAuth2SuccessHandler(StringRedisTemplate redisTemplate,
-    							HttpCookieOAuth2AuthorizationRequestRepository cookieRepository) {
+    							HttpCookieOAuth2AuthorizationRequestRepository cookieRepository,
+    							JwtProvider jwtProvider) {
         this.redisTemplate = redisTemplate;
         this.cookieRepository = cookieRepository;
+        this.jwtProvider = jwtProvider;
     }
 
     @Override
@@ -41,17 +48,16 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         // CustomOAuth2User에서 유저 PK를 꺼냄
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
-        Long userId = oAuth2User.getId();
 
-        // 팬텀 토큰 발급
+        // 1. JWT 발급
+        String internalJwt = jwtProvider.createToken(oAuth2User.getId(), "ROLE_USER");
         String phantomToken = UUID.randomUUID().toString();
-        String redisKey = REDIS_TOKEN_PREFIX + phantomToken;
 
-        // Redis에 토큰과 유저 ID 매핑 저장
+        // 2. Redis 저장
         redisTemplate.opsForValue().set(
-                redisKey,
-                String.valueOf(userId),
-                Duration.ofHours(TOKEN_EXPIRATION_HOURS)
+                redisTokenPrefix + phantomToken,
+                internalJwt,
+                Duration.ofHours(tokenExpirationHours)
         );
 
         // 프론트엔드로 넘어가기 전, 인증 과정에서 생성했던 임시 쿠키를 메모리에서 깔끔하게 삭제
@@ -63,5 +69,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
+
     }
 }

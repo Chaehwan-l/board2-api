@@ -13,6 +13,7 @@ import lch.domain.auth.dto.LoginCommand;
 import lch.domain.auth.dto.RegisterCommand;
 import lch.domain.user.entity.User;
 import lch.domain.user.repository.UserRepository;
+import lch.global.security.JwtProvider;
 
 
 @Service
@@ -21,6 +22,7 @@ public class AuthService {
 	private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
+    private final JwtProvider jwtProvider;
 
     @Value("${app.token.expiration-hours}")
     private long tokenExpirationHours;
@@ -28,10 +30,12 @@ public class AuthService {
     @Value("${app.token.redis-prefix}")
     private String redisTokenPrefix;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, StringRedisTemplate redisTemplate) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+    					StringRedisTemplate redisTemplate, JwtProvider jwtProvider) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.redisTemplate = redisTemplate;
+        this.jwtProvider = jwtProvider;
     }
 
     @Transactional
@@ -65,28 +69,27 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public String login(LoginCommand command) {
-        // 1. 유저 조회
         User user = userRepository.findByUserId(command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다."));
 
-        // 2. 비밀번호 검증 (입력된 평문 비밀번호와 DB의 해시된 비밀번호 비교)
         if (!passwordEncoder.matches(command.password(), user.getPassword())) {
-            throw new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다."); // 보안상 동일한 메시지 반환
+            throw new IllegalArgumentException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
 
-        // 3. 팬텀 토큰 생성 (클라이언트에게 노출될 랜덤 문자열)
+        // 1. 내부용 JWT 발급
+        String internalJwt = jwtProvider.createToken(user.getId(), user.getRole());
+
+        // 2. 외부용 UUID 발급
         String phantomToken = UUID.randomUUID().toString();
 
-        // 4. Redis에 토큰 저장 (Key: auth:token:랜덤문자열, Value: 유저 PK ID)
-        // 실무에서는 userId나 role 정보를 JSON 형태로 묶어서 Value로 저장하기도 합니다.
-        String redisKey = redisTokenPrefix + phantomToken;
+        // 3. Redis 저장 [UUID : JWT]
         redisTemplate.opsForValue().set(
-                redisKey,
-                String.valueOf(user.getId()),
+                redisTokenPrefix + phantomToken,
+                internalJwt,
                 Duration.ofHours(tokenExpirationHours)
         );
 
-        return phantomToken; // 컨트롤러로 토큰 반환
+        return phantomToken;
     }
 
 }
