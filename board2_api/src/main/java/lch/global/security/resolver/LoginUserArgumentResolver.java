@@ -9,6 +9,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import lch.global.error.BusinessException;
 import lch.global.security.annotation.LoginUser;
 
 /*
@@ -33,12 +34,12 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
 
-        // SecurityContext에서 인증 객체를 꺼냄 (PhantomTokenFilter에서 세팅한 객체)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        // 인증 정보가 없거나, 익명 사용자일 경우 예외 처리 (보통 Security 설정에서 막히지만 방어 로직 추가)
+        // 인증 정보가 없거나, 익명 사용자일 경우
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new IllegalStateException("인증되지 않은 사용자입니다.");
+            // IllegalStateException(500 에러 원인) 대신 401을 유도하는 비즈니스 예외를 던짐
+            throw new BusinessException.AuthenticationFailedException("인증 정보가 없거나 만료되었습니다.");
         }
 
         // 필터에서 주입했던 유저의 PK (Long)를 반환

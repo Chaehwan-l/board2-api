@@ -12,14 +12,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.fasterxml.jackson.databind.ObjectMapper; // JSON 변환을 위해 추가
-
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lch.global.common.ApiResponse; // 공통 응답 규격 사용
 
 @Component
 public class PhantomTokenFilter extends OncePerRequestFilter {
@@ -28,7 +25,6 @@ public class PhantomTokenFilter extends OncePerRequestFilter {
     private String redisTokenPrefix;
 
     private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper(); // JSON 처리를 위한 객체
     private final JwtProvider jwtProvider;
 
     public PhantomTokenFilter(StringRedisTemplate redisTemplate, JwtProvider jwtProvider) {
@@ -59,30 +55,13 @@ public class PhantomTokenFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 } catch (Exception e) {
-                    // JWT가 변조되었거나 만료된 경우
-                    sendErrorResponse(response, "인증 정보가 유효하지 않습니다.");
-                    return;
+                	// 검증 실패 시 로그만 남기고 다음 필터로 넘김 (SecurityConfig에서 알아서 차단함)
+                    logger.error("Invalid JWT token: " + e.getMessage());
                 }
-            } else {
-                // UUID 자체가 Redis에 없는 경우
-                sendErrorResponse(response, "로그인 세션이 만료되었습니다.");
-                return;
             }
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    // JSON 형태의 에러 응답을 직접 만드는 헬퍼 메서드
-    private void sendErrorResponse(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401 Unauthorized
-        response.setContentType("application/json;charset=UTF-8");
-
-        // 프로젝트 공통 규격인 ApiResponse.error() 활용
-        ApiResponse<Void> apiResponse = ApiResponse.error(message);
-        String json = objectMapper.writeValueAsString(apiResponse);
-
-        response.getWriter().write(json);
     }
 
     private String resolveToken(HttpServletRequest request) {
