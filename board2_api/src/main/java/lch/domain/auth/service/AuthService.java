@@ -3,6 +3,7 @@ package lch.domain.auth.service;
 import java.time.Duration;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,12 +20,13 @@ public class AuthService {
 
 	private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final StringRedisTemplate redisTemplate; // Redis 연동을 위한 템플릿
+    private final StringRedisTemplate redisTemplate;
 
-    // 토큰 만료 시간 (예: 2시간)
-    private static final long TOKEN_EXPIRATION_HOURS = 2;
-    // Redis에 저장될 키의 접두사
-    private static final String REDIS_TOKEN_PREFIX = "auth:token:";
+    @Value("${app.token.expiration-hours}")
+    private long tokenExpirationHours;
+
+    @Value("${app.token.redis-prefix}")
+    private String redisTokenPrefix;
 
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, StringRedisTemplate redisTemplate) {
         this.userRepository = userRepository;
@@ -34,6 +36,7 @@ public class AuthService {
 
     @Transactional
     public Long registerLocalUser(RegisterCommand command) {
+
         // 1. 중복 검증 (예외가 발생하면 GlobalExceptionHandler가 낚아채서 409 응답을 만듦)
         if (userRepository.existsByUserId(command.userId())) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
@@ -76,11 +79,11 @@ public class AuthService {
 
         // 4. Redis에 토큰 저장 (Key: auth:token:랜덤문자열, Value: 유저 PK ID)
         // 실무에서는 userId나 role 정보를 JSON 형태로 묶어서 Value로 저장하기도 합니다.
-        String redisKey = REDIS_TOKEN_PREFIX + phantomToken;
+        String redisKey = redisTokenPrefix + phantomToken;
         redisTemplate.opsForValue().set(
                 redisKey,
                 String.valueOf(user.getId()),
-                Duration.ofHours(TOKEN_EXPIRATION_HOURS)
+                Duration.ofHours(tokenExpirationHours)
         );
 
         return phantomToken; // 컨트롤러로 토큰 반환
