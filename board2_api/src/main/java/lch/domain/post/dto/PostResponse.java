@@ -1,6 +1,7 @@
 package lch.domain.post.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /*
  * 게시글 조회 응답을 위한 DTO
@@ -12,6 +13,7 @@ public record PostResponse(
 	    String title,
 	    String content,
 	    Long viewCount,
-	    String authorNickname,  // 캐시에서 가져올 닉네임 추가
-	    LocalDateTime createdAt // 작성일 추가
+	    String authorNickname,  // 캐시에서 가져올 닉네임
+	    LocalDateTime createdAt,
+	    List<AttachmentResponse> attachments // 첨부파일 리스트
 	) {}

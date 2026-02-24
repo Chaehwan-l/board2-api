@@ -1,9 +1,12 @@
 package lch.domain.post.controller;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +16,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -43,13 +48,20 @@ public class PostController {
         this.searchService = searchService;
     }
 
-    @Operation(summary = "게시글 작성", description = "제목과 내용을 입력하여 새로운 게시글을 작성합니다.")
-    @PostMapping
+    @Operation(summary = "게시글 작성 (파일 첨부 포함)", description = "multipart/form-data 형식으로 JSON(request)과 파일 리스트(files)를 받습니다.")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE) // 추가
     public ResponseEntity<ApiResponse<Long>> create(
             @Parameter(hidden = true) @LoginUser Long userId,
-            @Valid @RequestBody PostCreateRequest request) {
 
-        Long postId = postService.createPost(request.toCommand(userId));
+            // @RequestBody 대신 @RequestPart를 사용하여 JSON 데이터를 Blob 형태로 받음
+            @Valid @RequestPart("request") PostCreateRequest request,
+
+            // 파일 리스트 (필수값이 아니므로 required = false 설정)
+            @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+
+        // DTO의 변경된 메서드에 맞춰 파일 리스트 전달
+        Long postId = postService.createPost(request.toCommand(userId, files));
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("게시글이 작성되었습니다.", postId));
     }
