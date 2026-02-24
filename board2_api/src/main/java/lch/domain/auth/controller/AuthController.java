@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lch.domain.auth.dto.LoginRequest;
 import lch.domain.auth.dto.RegisterRequest;
@@ -46,9 +48,25 @@ public class AuthController {
         );
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
+        // 1. 헤더에서 Bearer 토큰 추출
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            // 2. Redis에서 토큰 삭제
+            authService.logout(token);
+        }
+
+        return ResponseEntity.ok(
+                ApiResponse.success("로그아웃 되었습니다.", null)
+        );
+    }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Long>> getMyInfo(@LoginUser Long currentUserId) {
+    public ResponseEntity<ApiResponse<Long>> getMyInfo(
+            @Parameter(hidden = true) @LoginUser Long currentUserId) {
+
         // Token을 파싱하거나 SecurityContext를 뒤질 필요 없이,
         // @LoginUser만 붙이면 currentUserId에 유저의 PK가 주입됨
 
@@ -57,6 +75,9 @@ public class AuthController {
                 ApiResponse.success("내 정보 PK 조회 성공", currentUserId)
         );
     }
+
+
+
 
 
 }

@@ -96,4 +96,11 @@ public class AuthService {
         return phantomToken;
     }
 
+    @Transactional
+    public void logout(String token) {
+        // Redis에 저장된 "auth:token:UUID" 키를 삭제하여 세션 무효화
+        String redisKey = redisTokenPrefix + token;
+        redisTemplate.delete(redisKey);
+    }
+
 }
