@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import lch.global.security.resolver.LoginUserArgumentResolver;
+import lch.global.security.LoginUserArgumentResolver;
 
 // 작성한 ArgumentResolver를 Spring MVC가 인식할 수 있도록 설정 파일에 등록
 
