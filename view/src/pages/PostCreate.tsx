@@ -26,7 +26,14 @@ export default function PostCreate() {
     if (!title.trim() || !content.trim()) return;
 
     const formData = new FormData();
-    formData.append('request', JSON.stringify({ title, content }));
+    
+    // 핵심 로직: Spring의 @RequestPart가 DTO로 인식할 수 있도록 Blob을 사용해 application/json 명시
+    const requestBlob = new Blob(
+      [JSON.stringify({ title, content })], 
+      { type: 'application/json' }
+    );
+    formData.append('request', requestBlob);
+
     files.forEach(file => {
       formData.append('files', file);
     });
@@ -35,11 +42,12 @@ export default function PostCreate() {
       const res = await axios.post('/posts', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
+          // 주의: Axios에서 FormData를 보낼 때는 'Content-Type': 'multipart/form-data'를 
+          // 직접 적으면 안 됩니다. (브라우저가 생성하는 Boundary 값이 누락되어 파싱 실패함)
         },
       });
       if (res.data.success) {
-        navigate(`/posts/${res.data.data}`);
+        navigate(`/posts/${res.data.data}`); // 백엔드가 넘겨준 postId로 이동
       }
     } catch (err) {
       console.error(err);

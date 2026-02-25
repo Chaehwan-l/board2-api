@@ -1,3 +1,4 @@
+// view/vite.config.ts
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -7,18 +8,24 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react(), tailwindcss()],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      // proxy 설정 추가: 프론트엔드에서 /auth, /posts 로 시작하는 요청을 백엔드로 우회시킵니다.
+      proxy: {
+        '/auth': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        },
+        '/posts': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+        },
+      }
     },
   };
 });
