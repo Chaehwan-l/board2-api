@@ -46,9 +46,15 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException("지원하지 않는 소셜 로그인입니다.");
         }
 
-        // DB에서 제공자와 제공자ID로 유저를 조회, 없으면 생성
-        User user = userRepository.findByEmail(userInfo.getEmail())
-                .orElseGet(() -> createUser(userInfo));
+        // Provider + ProviderId 복합 키로 유저를 조회
+        User user = userRepository.findByProviderAndProviderId(userInfo.getProvider(), userInfo.getProviderId())
+                .orElseGet(() -> {
+                    // 신규 소셜 가입 시에만 이메일 중복 여부를 체크하여 기존 계정 오연결 방지
+                    if (userRepository.existsByEmail(userInfo.getEmail())) {
+                        throw new OAuth2AuthenticationException("이미 동일한 이메일의 계정이 존재합니다.");
+                    }
+                    return createUser(userInfo);
+                });
 
         // CustomOAuth2User는 OAuth2User 인터페이스를 구현한 내부/별도 클래스 (PK를 SecurityContext에 담기 위해 확장)
         return new CustomOAuth2User(user, oAuth2User.getAttributes());

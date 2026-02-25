@@ -55,8 +55,9 @@ public class PhantomTokenFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
                 } catch (Exception e) {
-                	// 검증 실패 시 로그만 남기고 다음 필터로 넘김 (SecurityConfig에서 알아서 차단함)
-                    logger.error("Invalid JWT token: " + e.getMessage());
+                	// 검증 실패 시 로그만 남기는 것이 아니라 Redis에 저장된 잘못된 토큰 정보를 즉시 삭제
+                    redisTemplate.delete(redisTokenPrefix + token);
+                    logger.error("Invalid or corrupted JWT token removed from Redis: " + e.getMessage());
                 }
             }
         }
