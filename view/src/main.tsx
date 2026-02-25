@@ -1,21 +1,21 @@
+// view/src/main.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import axios from 'axios';
-
-import './index.css'
+import { BrowserRouter } from 'react-router'; 
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
+import './index.css';
+import axios from 'axios';
 
-// 백엔드 API 주소를 환경변수에서 읽습니다.
-// 비어 있으면 상대경로 요청으로 동작합니다.
+// 환경 변수 주소 연동
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '';
+
+// 프론트엔드와 백엔드가 도메인(포트)이 달라도 쿠키를 주고받을 수 있게 허용합니다.
+axios.defaults.withCredentials = true;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {/* Router는 앱 전체에서 한 번만 선언해야 합니다. */}
     <BrowserRouter>
-      {/* 인증 컨텍스트도 한 번만 감싸도록 합니다. */}
       <AuthProvider>
         <App />
       </AuthProvider>

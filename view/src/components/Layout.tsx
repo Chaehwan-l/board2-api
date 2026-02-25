@@ -1,73 +1,48 @@
-// view/src/components/Layout.tsx
 import React from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom'; // ✅ react-router-dom 사용
+import { Link, Outlet } from 'react-router';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, User, PenSquare } from 'lucide-react';
 
 export default function Layout() {
-  // ✅ userId가 아니라 AuthContext에 있는 값으로 변경
-  const { token, userPk, displayName, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
-  // ✅ 닉네임(표시명) 우선, 없으면 PK 표시
-  const userLabel = displayName || (userPk ? `회원#${userPk}` : '사용자');
+  // 상태에서 displayName(닉네임)과 userPk(로그인 여부 판단용)를 가져옵니다.
+  const { userPk, displayName, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="text-xl font-bold tracking-tight text-indigo-600">
-            게시판
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="text-xl font-bold text-gray-900">
+            BOARD LOGO
           </Link>
-
-          <nav className="flex items-center gap-4">
-            {token ? (
-              <>
-                <Link
-                  to="/posts/create"
-                  className="text-sm font-medium text-gray-600 hover:text-indigo-600 flex items-center gap-1"
+          
+          <div className="flex items-center gap-4">
+            {/* 토큰이 아니라 userPk가 있으면 로그인 된 것으로 간주합니다 */}
+            {userPk ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-700">
+                  <span className="text-indigo-600 font-bold">{displayName || '회원'}</span>님 환영합니다
+                </span>
+                <button 
+                  onClick={logout} 
+                  className="text-sm px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 transition-colors"
                 >
-                  <PenSquare className="w-4 h-4" />
-                  글쓰기
-                </Link>
-
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-600 border-l pl-4 border-gray-200">
-                  <User className="w-4 h-4" />
-                  {/* ✅ 로그인 사용자 표시명(닉네임 fallback) */}
-                  <span>{userLabel}</span>
-                </div>
-
-                <button
-                  onClick={handleLogout}
-                  className="text-sm font-medium text-gray-600 hover:text-red-600 flex items-center gap-1"
-                >
-                  <LogOut className="w-4 h-4" />
                   로그아웃
                 </button>
-              </>
+              </div>
             ) : (
-              <>
-                <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-indigo-600">
+              <div className="flex items-center gap-3">
+                <Link to="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900">
                   로그인
                 </Link>
-                <Link
-                  to="/register"
-                  className="text-sm font-medium bg-indigo-600 text-white px-3 py-1.5 rounded-md hover:bg-indigo-700 transition-colors"
-                >
+                <Link to="/register" className="text-sm font-medium bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
                   회원가입
                 </Link>
-              </>
+              </div>
             )}
-          </nav>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-5xl mx-auto w-full py-8 px-4">
         <Outlet />
       </main>
     </div>
