@@ -1,16 +1,19 @@
+// view/src/pages/PostDetail.tsx
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
-import { Trash2, Edit2, Download, MessageCircle, Clock, Eye } from 'lucide-react';
+import { Eye, Clock, MessageSquare, Trash2, Edit } from 'lucide-react';
 
 export default function PostDetail() {
   const { id } = useParams();
-  const [post, setPost] = useState<any>(null);
-  const [comment, setComment] = useState('');
-  const { token, userId } = useAuth();
   const navigate = useNavigate();
+  // ✅ 버튼 노출 여부를 판단하기 위해 displayName(닉네임)을 가져옵니다.
+  const { token, userPk, displayName } = useAuth();
+  
+  const [post, setPost] = useState<any>(null);
+  const [commentInput, setCommentInput] = useState('');
 
   const fetchPost = async () => {
     try {
@@ -21,159 +24,162 @@ export default function PostDetail() {
       }
     } catch (err) {
       console.error(err);
+      alert('게시글을 불러올 수 없습니다.');
       navigate('/');
     }
   };
 
   useEffect(() => {
     fetchPost();
-  }, [id]);
+  }, [id, token]);
 
-  const handleDelete = async () => {
-    if (!window.confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
+  const handleDeletePost = async () => {
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`/posts/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      await axios.delete(`/posts/${id}`, config);
+      alert('삭제되었습니다.');
       navigate('/');
     } catch (err) {
-      console.error(err);
+      alert('삭제에 실패했습니다.');
     }
   };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim()) return;
+    if (!commentInput.trim()) return;
+
     try {
-      await axios.post(`/posts/${id}/comments`, { content: comment }, { headers: { Authorization: `Bearer ${token}` } });
-      setComment('');
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      await axios.post(`/posts/${id}/comments`, { content: commentInput }, config);
+      setCommentInput('');
       fetchPost();
     } catch (err) {
-      console.error(err);
+      alert('댓글 작성에 실패했습니다.');
     }
   };
 
   const handleDeleteComment = async (commentId: number) => {
-    if (!window.confirm('이 댓글을 삭제하시겠습니까?')) return;
+    if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
     try {
-      await axios.delete(`/posts/comments/${commentId}`, { headers: { Authorization: `Bearer ${token}` } });
+      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      await axios.delete(`/posts/${id}/comments/${commentId}`, config);
       fetchPost();
     } catch (err) {
-      console.error(err);
+      alert('댓글 삭제에 실패했습니다.');
     }
   };
 
-  if (!post) return <div className="flex justify-center py-20"><div className="animate-pulse flex space-x-4"><div className="rounded-full bg-slate-200 h-10 w-10"></div><div className="flex-1 space-y-6 py-1"><div className="h-2 bg-slate-200 rounded"></div><div className="space-y-3"><div className="grid grid-cols-3 gap-4"><div className="h-2 bg-slate-200 rounded col-span-2"></div><div className="h-2 bg-slate-200 rounded col-span-1"></div></div><div className="h-2 bg-slate-200 rounded"></div></div></div></div></div>;
+  if (!post) return <div className="text-center py-20 text-gray-500">로딩 중...</div>;
 
-  const isAuthor = userId === String(post.authorId);
+  // ✅ 핵심 수정 포인트: PK가 아닌 닉네임으로 본인 여부를 판단합니다.
+  const isAuthor = displayName && post.authorNickname === displayName;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-8 border-b border-gray-100">
-          <div className="flex justify-between items-start mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 leading-tight">{post.title}</h1>
-            {isAuthor && (
-              <div className="flex gap-2 shrink-0 ml-4">
-                <Link to={`/posts/${id}/edit`} className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                  <Edit2 className="w-5 h-5" />
-                </Link>
-                <button onClick={handleDelete} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-6 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                {post.authorNickname.charAt(0).toUpperCase()}
-              </div>
-              <span className="font-medium text-gray-900">{post.authorNickname}</span>
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* 게시글 영역 */}
+      <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
+        <div className="border-b border-gray-100 pb-6 mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
+          <div className="flex flex-wrap items-center justify-between text-sm text-gray-500 gap-4">
+            <div className="flex items-center gap-4">
+              <span className="font-semibold text-gray-700">{post.authorNickname}</span>
+              <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {format(new Date(post.createdAt), 'yyyy. MM. dd. HH:mm')}</span>
             </div>
-            <div className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {format(new Date(post.createdAt), 'yyyy. MM. dd. HH:mm')}</div>
-            <div className="flex items-center gap-1.5"><Eye className="w-4 h-4" /> 조회 {post.viewCount}</div>
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1"><Eye className="w-4 h-4" /> {post.viewCount}</span>
+            </div>
           </div>
         </div>
-        
-        <div className="p-8 prose prose-indigo max-w-none text-gray-700 whitespace-pre-wrap">
+
+        <div className="prose max-w-none min-h-[200px] text-gray-800 whitespace-pre-wrap mb-8">
           {post.content}
         </div>
 
+        {/* 첨부파일 영역 */}
         {post.attachments && post.attachments.length > 0 && (
-          <div className="p-8 bg-gray-50 border-t border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Download className="w-4 h-4" /> 첨부파일
-            </h3>
-            <ul className="space-y-2">
+          <div className="bg-gray-50 p-4 rounded-lg mb-8 border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">첨부파일</h3>
+            <ul className="space-y-1">
               {post.attachments.map((file: any) => (
                 <li key={file.id}>
-                  <a href={`/uploads/${file.s3Key}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-800 hover:underline bg-white p-3 rounded-lg border border-gray-200 shadow-sm transition-all">
-                    <Download className="w-4 h-4" /> {file.fileName}
+                  <a href={file.fileUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline text-sm flex items-center gap-1">
+                    💾 {file.originalFileName}
                   </a>
                 </li>
               ))}
             </ul>
           </div>
         )}
-      </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex items-center gap-2">
-          <MessageCircle className="w-5 h-5 text-gray-500" />
-          <h3 className="text-lg font-bold text-gray-900">댓글 ({post.comments?.length || 0})</h3>
-        </div>
-        
-        <div className="p-6 space-y-6">
-          {token ? (
-            <form onSubmit={handleCommentSubmit} className="flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold shrink-0">
-                {userId?.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 relative">
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="댓글을 작성해보세요..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none min-h-[100px] transition-all"
-                  required
-                />
-                <button type="submit" className="absolute bottom-3 right-3 bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-                  등록
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="bg-gray-50 p-6 rounded-xl text-center border border-gray-200">
-              <p className="text-gray-600 mb-3">댓글을 작성하려면 로그인해주세요.</p>
-              <Link to="/login" className="inline-block bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-                로그인
+        <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+          <button onClick={() => navigate(-1)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
+            목록으로
+          </button>
+          
+          {/* ✅ 본인이 작성한 글일 때만 수정/삭제 버튼 노출 */}
+          {isAuthor && (
+            <div className="flex gap-2">
+              <Link to={`/posts/${post.id}/edit`} className="flex items-center gap-1 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium">
+                <Edit className="w-4 h-4" /> 수정
               </Link>
+              <button onClick={handleDeletePost} className="flex items-center gap-1 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium">
+                <Trash2 className="w-4 h-4" /> 삭제
+              </button>
             </div>
           )}
+        </div>
+      </div>
 
-          <div className="space-y-6 mt-8">
-            {post.comments?.map((c: any) => (
-              <div key={c.id} className="flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold shrink-0">
-                  {c.authorNickname.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 bg-gray-50 p-4 rounded-2xl rounded-tl-none border border-gray-100">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900 text-sm">{c.authorNickname}</span>
-                      <span className="text-xs text-gray-500">{format(new Date(c.createdAt), 'yyyy. MM. dd. HH:mm')}</span>
-                    </div>
-                    {userId === String(c.authorId) && (
-                      <button onClick={() => handleDeleteComment(c.id)} className="text-gray-400 hover:text-red-600 transition-colors">
-                        <Trash2 className="w-4 h-4" />
+      {/* 댓글 영역 */}
+      <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-gray-200">
+        <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6">
+          <MessageSquare className="w-5 h-5" /> 댓글 {post.comments ? post.comments.length : 0}개
+        </h3>
+
+        {/* 댓글 작성 폼 (로그인한 유저만) */}
+        {userPk ? (
+          <form onSubmit={handleCommentSubmit} className="mb-8 flex gap-2">
+            <input
+              type="text"
+              value={commentInput}
+              onChange={(e) => setCommentInput(e.target.value)}
+              placeholder="댓글을 남겨보세요."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+            />
+            <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium whitespace-nowrap">
+              등록
+            </button>
+          </form>
+        ) : (
+          <div className="mb-8 p-4 bg-gray-50 text-center text-sm text-gray-500 rounded-lg border border-gray-200">
+            댓글을 작성하려면 <Link to="/login" className="text-indigo-600 font-semibold underline">로그인</Link>이 필요합니다.
+          </div>
+        )}
+
+        {/* 댓글 목록 */}
+        <div className="space-y-4">
+          {post.comments && post.comments.length > 0 ? (
+            post.comments.map((comment: any) => (
+              <div key={comment.id} className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="font-semibold text-gray-800 text-sm">{comment.authorNickname}</span>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span>{format(new Date(comment.createdAt), 'yyyy. MM. dd. HH:mm')}</span>
+                    {/* ✅ 댓글 삭제 버튼 로직도 닉네임 비교로 수정 */}
+                    {displayName && comment.authorNickname === displayName && (
+                      <button onClick={() => handleDeleteComment(comment.id)} className="text-red-400 hover:text-red-600">
+                        삭제
                       </button>
                     )}
                   </div>
-                  <p className="text-gray-700 text-sm whitespace-pre-wrap">{c.content}</p>
                 </div>
+                <p className="text-gray-700 text-sm whitespace-pre-wrap">{comment.content}</p>
               </div>
-            ))}
-          </div>
+            ))
+          ) : (
+            <div className="text-center text-gray-500 text-sm py-4">첫 댓글을 남겨보세요.</div>
+          )}
         </div>
       </div>
     </div>

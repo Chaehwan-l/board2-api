@@ -1,8 +1,9 @@
+// view/src/pages/PostList.tsx
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { Search, Eye, MessageSquare, Clock } from 'lucide-react';
+import { Search, Eye, Clock, Edit3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function PostList() {
@@ -11,7 +12,8 @@ export default function PostList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
   const [history, setHistory] = useState<string[]>([]);
-  const { token } = useAuth();
+  // 토큰 유무뿐만 아니라 userPk(로그인 식별자)도 가져옵니다.
+  const { token, userPk } = useAuth(); 
   
   const page = parseInt(searchParams.get('page') || '0');
 
@@ -62,37 +64,50 @@ export default function PostList() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">커뮤니티 게시판</h1>
+        <h1 className="text-2xl font-bold text-gray-900 shrink-0">커뮤니티 게시판</h1>
         
-        <div className="relative w-full md:w-96">
-          <form onSubmit={handleSearch} className="relative">
-            <input
-              type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="게시글 검색..."
-              className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
-            />
-            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
-          </form>
-          {history.length > 0 && (
-            <div className="absolute top-full mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-lg z-20 p-2">
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">최근 검색어</div>
-              <div className="flex flex-wrap gap-2">
-                {history.map((h, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setKeyword(h);
-                      setSearchParams({ keyword: h, page: '0' });
-                    }}
-                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-sm rounded-full text-gray-700 transition-colors"
-                  >
-                    {h}
-                  </button>
-                ))}
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-80">
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="게시글 검색..."
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+              />
+              <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+            </form>
+            {history.length > 0 && (
+              <div className="absolute top-full mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-lg z-20 p-2">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">최근 검색어</div>
+                <div className="flex flex-wrap gap-2">
+                  {history.map((h, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setKeyword(h);
+                        setSearchParams({ keyword: h, page: '0' });
+                      }}
+                      className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-sm rounded-full text-gray-700 transition-colors"
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* ✅ 글쓰기 버튼 (로그인한 사용자에게만 보임) */}
+          {(token || userPk) && (
+            <Link
+              to="/posts/create"
+              className="shrink-0 flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-full hover:bg-indigo-700 transition-colors font-medium shadow-sm"
+            >
+              <Edit3 className="w-4 h-4" />
+              <span>글쓰기</span>
+            </Link>
           )}
         </div>
       </div>
