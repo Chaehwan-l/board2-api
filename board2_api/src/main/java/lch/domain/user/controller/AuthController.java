@@ -14,7 +14,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lch.domain.user.dto.LoginRequest;
+import lch.domain.user.dto.MyInfoResponse;
 import lch.domain.user.dto.RegisterRequest;
+import lch.domain.user.entity.User;
+import lch.domain.user.repository.UserRepository;
 import lch.domain.user.service.AuthService;
 import lch.global.error.ApiResponse;
 import lch.global.security.LoginUser;
@@ -25,9 +28,11 @@ import lch.global.security.LoginUser;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, UserRepository userRepository) {
         this.authService = authService;
+        this.userRepository = userRepository;
     }
 
     @Operation(summary = "로컬 회원가입", description = "아이디, 이메일, 비밀번호 등을 입력받아 회원가입을 진행합니다.")
@@ -68,22 +73,22 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("로그아웃 되었습니다.", null));
     }
 
-    @Operation(summary = "내 정보 조회", description = "현재 로그인한 유저의 식별자(PK)를 반환합니다.")
+    @Operation(summary = "내 정보 조회", description = "현재 로그인한 유저의 식별자(PK)와 닉네임을 반환합니다.")
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Long>> getMyInfo(
+    public ResponseEntity<ApiResponse<MyInfoResponse>> getMyInfo(
             @Parameter(hidden = true) @LoginUser Long currentUserId) {
 
-        // Token을 파싱하거나 SecurityContext를 뒤질 필요 없이,
-        // @LoginUser만 붙이면 currentUserId에 유저의 PK가 주입됨
+        // 1. SecurityContext에서 꺼낸 PK로 DB에서 실제 유저 정보를 조회합니다.
+        // 실무에서는 예외 처리를 GlobalExceptionHandler와 연동된 Custom Exception으로 던지는 것이 좋습니다.
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
 
-        // 이 PK를 가지고 UserRepository.findById()를 호출하여 정보를 내려주면 됨
+        // 2. 조회한 유저 정보로 응답용 DTO를 생성합니다.
+        MyInfoResponse responseData = new MyInfoResponse(user.getId(), user.getNickname());
+
+        // 3. 클라이언트에게 반환합니다.
         return ResponseEntity.ok(
-                ApiResponse.success("내 정보 PK 조회 성공", currentUserId)
+                ApiResponse.success("내 정보 조회 성공", responseData)
         );
     }
-
-
-
-
-
 }
