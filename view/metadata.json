@@ -1,0 +1,5 @@
+{
+  "name": "Community Board",
+  "description": "A full-stack community board application with authentication, posts, comments, and file attachments.",
+  "requestFramePermissions": []
+}
