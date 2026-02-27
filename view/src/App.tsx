@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -12,6 +14,8 @@ import PostEdit from './pages/PostEdit';
 
 // 1. 브릿지 역할을 할 OAuthRedirect 컴포넌트를 임포트합니다.
 import OAuthRedirect from './pages/OAuthRedirect'; 
+
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { token, userPk } = useAuth(); // OAuth 유저는 token이 없을 수 있으므로 userPk도 함께 확인하는 것이 좋습니다.
