@@ -127,23 +127,30 @@ public class PostService {
 	// 삭제
 	@Transactional
 	public void deletePost(Long postId, Long currentUserId) {
-		Post post = postRepository.findById(postId).orElseThrow(() -> new BusinessException("게시글을 찾을 수 없습니다."));
+		// 1. 커스텀 예외 구조에 맞춘 검증 로직
+		Post post = postRepository.findById(postId)
+				.orElseThrow(() -> new BusinessException("게시글을 찾을 수 없습니다."));
 
 		if (!post.getAuthor().getId().equals(currentUserId)) {
 			throw new BusinessException.AccessDeniedException("게시글 삭제 권한이 없습니다.");
 		}
 
-		// DB 작업 실패 시 롤백을 고려하여, Redis 키 삭제와 S3 삭제 모두 커밋 이후로 예약
-		// 1. Redis 조회수 키 삭제 예약
+		// 2. DB 작업 실패 시 롤백을 고려한 Redis 키 삭제 예약
 		registerAfterCommitDeletion("post:view:count:" + postId, false);
 
-		// 2. 연관된 첨부파일 S3 실물 삭제 예약
+		// 3. 연관된 첨부파일 S3 실물 삭제 예약 및 DB 엔티티 삭제
 		List<Attachment> attachments = attachmentRepository.findByPostId(postId);
 		for (Attachment attachment : attachments) {
 			registerAfterCommitDeletion(attachment.getS3Key(), true);
 		}
+		// 부모(Post)보다 자식(Attachment)을 먼저 삭제해야 JPA 영속성 오류가 발생하지 않음
+		attachmentRepository.deleteAll(attachments);
 
-		// 3. DB 게시글 삭제 (이후 DB 커밋이 성공하면 예약된 1, 2번 로직이 실행됨)
+		// 4. 연관된 댓글 삭제
+		List<Comment> comments = commentRepository.findByPostId(postId);
+		commentRepository.deleteAll(comments);
+
+		// 5. DB 게시글 삭제
 		postRepository.delete(post);
 	}
 
