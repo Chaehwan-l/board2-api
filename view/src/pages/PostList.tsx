@@ -1,4 +1,3 @@
-// view/src/pages/PostList.tsx
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -12,7 +11,7 @@ export default function PostList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
   const [history, setHistory] = useState<string[]>([]);
-  // 토큰 유무뿐만 아니라 userPk(로그인 식별자)도 가져옵니다.
+  const [isSearchFocused, setIsSearchFocused] = useState(false); 
   const { token, userPk } = useAuth(); 
   
   const page = parseInt(searchParams.get('page') || '0');
@@ -73,12 +72,18 @@ export default function PostList() {
                 type="text"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
+                // [수정 포인트 2] input에 포커스가 들어오고 나갈 때 상태 업데이트
+                onFocus={() => setIsSearchFocused(true)}
+                // setTimeout을 주지 않으면 클릭 이벤트가 발생하기 전에 팝업이 사라집니다.
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                 placeholder="게시글 검색..."
                 className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
               />
               <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
             </form>
-            {history.length > 0 && (
+            
+            {/* [수정 포인트 3] isSearchFocused 조건 추가 (포커스가 있을 때만 렌더링) */}
+            {history.length > 0 && isSearchFocused && (
               <div className="absolute top-full mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-lg z-20 p-2">
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">최근 검색어</div>
                 <div className="flex flex-wrap gap-2">
@@ -112,6 +117,7 @@ export default function PostList() {
         </div>
       </div>
 
+      {/* ... 이하 기존 게시글 목록 렌더링 코드 유지 ... */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {posts.length === 0 ? (
