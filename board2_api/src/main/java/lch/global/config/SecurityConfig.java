@@ -99,7 +99,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 프론트엔드 출처 허용 (로컬: 3000, 5173 / 실서버: Vercel 주소)
+        // 프론트엔드 출처 허용
         configuration.setAllowedOrigins(frontendUrls);
 
         // 허용할 HTTP 메서드 (OPTIONS는 Preflight 요청을 위해 필수)
@@ -108,7 +108,7 @@ public class SecurityConfig {
         // 허용할 헤더
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Cache-Control", "Content-Type"));
 
-        // 인증 정보(쿠키, Authorization 헤더 등) 포함 여부 (OAuth2, Session 등에 필수)
+        // 인증 정보 (쿠키, Authorization 헤더 등) 포함 여부 (OAuth2, Session 등에 필수)
         configuration.setAllowCredentials(true);
 
         // Preflight 캐싱 시간 (1시간)

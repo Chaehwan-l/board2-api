@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lch.domain.user.dto.LoginRequest;
 import lch.domain.user.dto.MyInfoResponse;
@@ -20,6 +21,7 @@ import lch.domain.user.entity.User;
 import lch.domain.user.repository.UserRepository;
 import lch.domain.user.service.AuthService;
 import lch.global.error.ApiResponse;
+import lch.global.security.CookieUtils;
 import lch.global.security.LoginUser;
 
 @Tag(name = "인증/회원 API", description = "회원가입, 로그인 및 유저 정보 관련 API")
@@ -58,17 +60,33 @@ public class AuthController {
         );
     }
 
-    @Operation(summary = "로그아웃", description = "Redis에 저장된 세션(팬텀 토큰)과 검색 기록을 만료시킵니다.")
+    @Operation(summary = "로그아웃", description = "Redis 세션과 브라우저 쿠키를 파기합니다.")
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @Parameter(hidden = true) @LoginUser Long userId, HttpServletRequest request) {
+            @Parameter(hidden = true) @LoginUser Long userId,
+            HttpServletRequest request,
+            HttpServletResponse response) { // response 객체 주입
 
+        // 1. 로컬 로그인 (Header Bearer 토큰) 처리
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            // 서비스의 변경된 파라미터에 맞춰 userId 전달
             authService.logout(token, userId);
         }
+
+        // 2. OAuth 로그인 (Cookie 토큰) 처리 및 Redis 만료
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("access_token".equals(cookie.getName())) {
+                    authService.logout(cookie.getValue(), userId);
+                    break;
+                }
+            }
+        }
+
+        // 3. 브라우저에 남은 좀비 쿠키 강제 삭제 지시
+        CookieUtils.deleteCookie(request, response, "access_token");
 
         return ResponseEntity.ok(ApiResponse.success("로그아웃 되었습니다.", null));
     }

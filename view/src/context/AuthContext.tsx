@@ -63,9 +63,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    if (token) {
-      axios.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
-    }
+    // token(로컬)이 있든 없든(OAuth), 쿠키 삭제를 위해 무조건 백엔드 로그아웃 API 호출
+    const config = token 
+      ? { headers: { Authorization: `Bearer ${token}` }, withCredentials: true } 
+      : { withCredentials: true }; // OAuth 쿠키를 실어 보내기 위해 필수
+  
+    axios.post('/auth/logout', {}, config).catch(() => {});
+  
     setToken(null);
     setUserPk(null);
     setDisplayName(null);
