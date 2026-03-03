@@ -9,7 +9,7 @@ import { Eye, Clock, MessageSquare, Trash2, Edit } from 'lucide-react';
 export default function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  // ✅ 버튼 노출 여부를 판단하기 위해 displayName(닉네임)을 가져옵니다.
+  // ✅ 버튼 노출 여부를 판단하기 위해 userPk와 displayName을 가져옵니다.
   const { token, userPk, displayName } = useAuth();
   
   const [post, setPost] = useState<any>(null);
@@ -40,8 +40,10 @@ export default function PostDetail() {
       await axios.delete(`/posts/${id}`, config);
       alert('삭제되었습니다.');
       navigate('/');
-    } catch (err) {
-      alert('삭제에 실패했습니다.');
+    } catch (err: any) {
+      // ✅ 백엔드의 구체적인 에러 메시지가 있다면 출력 (예: 권한 없음)
+      const errorMessage = err.response?.data?.message || '삭제에 실패했습니다.';
+      alert(errorMessage);
     }
   };
 
@@ -54,8 +56,9 @@ export default function PostDetail() {
       await axios.post(`/posts/${id}/comments`, { content: commentInput }, config);
       setCommentInput('');
       fetchPost();
-    } catch (err) {
-      alert('댓글 작성에 실패했습니다.');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || '댓글 작성에 실패했습니다.';
+      alert(errorMessage);
     }
   };
 
@@ -65,15 +68,17 @@ export default function PostDetail() {
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       await axios.delete(`/posts/${id}/comments/${commentId}`, config);
       fetchPost();
-    } catch (err) {
-      alert('댓글 삭제에 실패했습니다.');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || '댓글 삭제에 실패했습니다.';
+      alert(errorMessage);
     }
   };
 
   if (!post) return <div className="text-center py-20 text-gray-500">로딩 중...</div>;
 
-  // ✅ 핵심 수정 포인트: PK가 아닌 닉네임으로 본인 여부를 판단합니다.
-  const isAuthor = displayName && post.authorNickname === displayName;
+  // ✅ 핵심 수정 포인트: 닉네임이 아닌 백엔드에서 넘겨준 고유 식별자(authorId)로 본인 여부 판단
+  // userPk는 로컬스토리지 기반 문자열, authorId는 숫자이므로 String()으로 감싸 안전하게 비교
+  const isAuthor = userPk && String(post.authorId) === String(userPk);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -166,8 +171,8 @@ export default function PostDetail() {
                   <span className="font-semibold text-gray-800 text-sm">{comment.authorNickname}</span>
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span>{format(new Date(comment.createdAt), 'yyyy. MM. dd. HH:mm')}</span>
-                    {/* ✅ 댓글 삭제 버튼 로직도 닉네임 비교로 수정 */}
-                    {displayName && comment.authorNickname === displayName && (
+                    {/* ✅ 댓글 삭제 버튼 노출 로직도 고유 식별자(PK) 비교로 수정 */}
+                    {userPk && String(comment.authorId) === String(userPk) && (
                       <button onClick={() => handleDeleteComment(comment.id)} className="text-red-400 hover:text-red-600">
                         삭제
                       </button>

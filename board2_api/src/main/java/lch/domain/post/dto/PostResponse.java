@@ -13,6 +13,7 @@ public record PostResponse(
 	    String title,
 	    String content,
 	    Long viewCount,
+	    Long authorId,
 	    String authorNickname,  // 캐시에서 가져올 닉네임
 	    LocalDateTime createdAt,
 	    List<AttachmentResponse> attachments, // 첨부파일 리스트
