@@ -103,26 +103,27 @@ public class PostService {
 
 	// 상세 조회
 	@Transactional(readOnly = true)
-	public PostResponse getPost(Long postId, Long currentUserId) {
-		Post post = postRepository.findById(postId).orElseThrow(() -> new BusinessException("게시글을 찾을 수 없습니다."));
+    public PostResponse getPost(Long postId, Long currentUserId) {
+        Post post = postRepository.findById(postId).orElseThrow(() -> new BusinessException("게시글을 찾을 수 없습니다."));
 
-		// 조회수 증가 후, DB 값과 Redis에만 있는 미동기화 값을 합산하여 응답 (논리 오류 1-1 해결)
-		viewCountService.increment(postId);
-		Long redisCount = viewCountService.getCount("post:view:count:" + postId);
-		Long totalViewCount = post.getViewCount() + redisCount;
+        viewCountService.increment(postId);
+        Long redisCount = viewCountService.getCount("post:view:count:" + postId);
+        Long totalViewCount = post.getViewCount() + redisCount;
 
-		String authorNickname = userCacheService.getUserNickname(post.getAuthor().getId());
+        String authorNickname = userCacheService.getUserNickname(post.getAuthor().getId());
 
-		List<AttachmentResponse> attachmentResponses = attachmentRepository.findByPostId(postId).stream()
-				.map(a -> new AttachmentResponse(a.getId(), a.getFileName(), a.getS3Key())).toList();
+        List<AttachmentResponse> attachmentResponses = attachmentRepository.findByPostId(postId).stream()
+                .map(a -> new AttachmentResponse(a.getId(), a.getFileName(), a.getS3Key())).toList();
 
-		List<CommentResponse> commentResponses = commentRepository.findByPostId(postId).stream()
-				.map(c -> new CommentResponse(c.getId(), c.getAuthor().getNickname(), c.getContent(), c.getCreatedAt()))
-				.toList();
+        // CommentResponse 생성 시 c.getAuthor().getId() 를 추가로 넘겨줌
+        List<CommentResponse> commentResponses = commentRepository.findByPostId(postId).stream()
+                .map(c -> new CommentResponse(c.getId(), c.getAuthor().getId(), c.getAuthor().getNickname(), c.getContent(), c.getCreatedAt()))
+                .toList();
 
-		return new PostResponse(post.getId(), post.getTitle(), post.getContent(), totalViewCount, // 합산값 전달
-				authorNickname, post.getCreatedAt(), attachmentResponses, commentResponses);
-	}
+        // PostResponse 생성 시 post.getAuthor().getId() 를 추가로 넘겨줌
+        return new PostResponse(post.getId(), post.getTitle(), post.getContent(), totalViewCount,
+                post.getAuthor().getId(), authorNickname, post.getCreatedAt(), attachmentResponses, commentResponses);
+    }
 
 	// 삭제
 	@Transactional
