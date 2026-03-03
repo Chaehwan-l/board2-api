@@ -20,6 +20,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
+import lch.domain.user.oauth2.OAuth2FailureHandler;
 import lch.domain.user.oauth2.OAuth2SuccessHandler;
 import lch.domain.user.service.CustomOAuth2UserService;
 import lch.global.security.HttpCookieOAuth2AuthorizationRequestRepository;
@@ -33,6 +34,7 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
+    private final OAuth2FailureHandler oAuth2FailureHandler;
 
     // 프론트엔드 URL을 주입
     @Value("${app.frontend.url:http://localhost:3000,http://localhost:5173}")
@@ -41,11 +43,13 @@ public class SecurityConfig {
     public SecurityConfig(PhantomTokenFilter phantomTokenFilter,
                           CustomOAuth2UserService customOAuth2UserService,
                           OAuth2SuccessHandler oAuth2SuccessHandler,
-                          HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository) {
+                          HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository,
+                          OAuth2FailureHandler oAuth2FailureHandler) {
         this.phantomTokenFilter = phantomTokenFilter;
         this.customOAuth2UserService = customOAuth2UserService;
         this.oAuth2SuccessHandler = oAuth2SuccessHandler;
         this.cookieAuthorizationRequestRepository = cookieAuthorizationRequestRepository;
+        this.oAuth2FailureHandler = oAuth2FailureHandler;
     }
 
     @Bean
@@ -74,6 +78,7 @@ public class SecurityConfig {
                     response.getWriter().write("{\"success\":false,\"message\":\"인증이 필요합니다.\",\"data\":null}");
                 })
             )
+
             .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(endpoint -> endpoint
                     .authorizationRequestRepository(cookieAuthorizationRequestRepository)
@@ -82,6 +87,7 @@ public class SecurityConfig {
                     .userService(customOAuth2UserService)
                 )
                 .successHandler(oAuth2SuccessHandler)
+                .failureHandler(oAuth2FailureHandler)
             )
             .addFilterBefore(phantomTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
