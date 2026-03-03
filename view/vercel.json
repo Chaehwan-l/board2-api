@@ -15,6 +15,7 @@
     {
       "source": "/oauth2/:path*",
       "destination": "http://3.37.225.35:8080/oauth2/:path*"
-    }
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
